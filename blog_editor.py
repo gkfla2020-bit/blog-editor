@@ -8,7 +8,10 @@ import markdown
 import webbrowser
 import tempfile
 import os
+import shutil
+import base64
 from datetime import datetime
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 class BlogEditor:
     def __init__(self, root):
@@ -19,8 +22,13 @@ class BlogEditor:
         
         # Temp file for preview
         self.temp_html = None
+        # Image storage folder
+        self.images_folder = os.path.join(os.path.dirname(__file__), 'post_images')
+        os.makedirs(self.images_folder, exist_ok=True)
+        self.images = []  # List of image paths used in post
         
         self.setup_ui()
+        self.setup_drag_drop()
         self.update_preview()
     
     def setup_ui(self):
@@ -134,6 +142,11 @@ def hello():
 Visit [my blog](https://gkfla2020-bit.github.io) for more.
 """)
         self.editor.bind('<KeyRelease>', lambda e: self.update_preview())
+        
+        # Add image button
+        tk.Button(btn_frame, text="Add Image", command=self.add_image_dialog,
+                 bg='#555', fg='#fff', font=('Arial', 9), relief='flat', padx=15, pady=5,
+                 cursor='hand2').pack(side=tk.LEFT, padx=5)
         
         # Right: Preview
         preview_frame = tk.Frame(paned, bg='#fafaf8')
@@ -330,8 +343,53 @@ body {{ font-family: 'Inter', sans-serif; background: #fafaf8; color: #1a1a1a; l
                 os.unlink(self.temp_html)
             except:
                 pass
+    
+    def setup_drag_drop(self):
+        """Setup drag and drop for images"""
+        self.editor.drop_target_register(DND_FILES)
+        self.editor.dnd_bind('<<Drop>>', self.on_drop_image)
+    
+    def on_drop_image(self, event):
+        """Handle dropped image files"""
+        files = self.root.tk.splitlist(event.data)
+        for filepath in files:
+            filepath = filepath.strip('{}')  # Remove curly braces if present
+            if filepath.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                self.insert_image(filepath)
+    
+    def add_image_dialog(self):
+        """Open file dialog to add image"""
+        filepath = filedialog.askopenfilename(
+            filetypes=[
+                ('Image files', '*.png *.jpg *.jpeg *.gif *.webp'),
+                ('All files', '*.*')
+            ]
+        )
+        if filepath:
+            self.insert_image(filepath)
+    
+    def insert_image(self, filepath):
+        """Insert image into editor"""
+        # Copy image to post_images folder
+        filename = os.path.basename(filepath)
+        # Make unique filename
+        base, ext = os.path.splitext(filename)
+        counter = 1
+        new_filename = filename
+        while os.path.exists(os.path.join(self.images_folder, new_filename)):
+            new_filename = f"{base}_{counter}{ext}"
+            counter += 1
+        
+        dest_path = os.path.join(self.images_folder, new_filename)
+        shutil.copy2(filepath, dest_path)
+        self.images.append(dest_path)
+        
+        # Insert markdown at cursor position
+        markdown_img = f"\n![{base}]({dest_path})\n"
+        self.editor.insert(tk.INSERT, markdown_img)
+        self.update_preview()
 
 if __name__ == '__main__':
-    root = tk.Tk()
+    root = TkinterDnD.Tk()
     app = BlogEditor(root)
     root.mainloop()
