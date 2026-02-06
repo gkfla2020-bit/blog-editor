@@ -2,7 +2,7 @@
 
 마크다운으로 블로그 글을 작성하면서 실시간 미리보기를 제공하는 데스크톱 에디터입니다.
 
-![Screenshot](screenshot.png)
+![Screenshot](image.png)
 
 ## Features
 
